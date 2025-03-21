@@ -4,12 +4,40 @@ import joblib
 import os
 import json
 import numpy as np
+import boto3
 from dotenv import load_dotenv
 
 # Langfuse
 from langfuse import Langfuse
 from langfuse.decorators import observe
 from langfuse.openai import OpenAI as LangfuseOpenAI
+
+# 📌 Wczytaj zmienne środowiskowe
+load_dotenv()
+
+# 📌 Konfiguracja Langfuse
+langfuse_client = Langfuse(
+    public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
+    secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
+    host=os.getenv("LANGFUSE_HOST"),
+)
+
+llm_client = LangfuseOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# 📌 Konfiguracja DigitalOcean Spaces
+DO_SPACES_KEY = os.getenv("DO_SPACES_KEY")
+DO_SPACES_SECRET = os.getenv("DO_SPACES_SECRET")
+DO_SPACES_REGION = os.getenv("DO_SPACES_REGION")
+DO_SPACES_BUCKET = os.getenv("DO_SPACES_BUCKET")
+
+# Tworzymy klienta S3 do Spaces
+s3_client = boto3.client(
+    "s3",
+    region_name=DO_SPACES_REGION,
+    endpoint_url=f"https://{DO_SPACES_REGION}.digitaloceanspaces.com",
+    aws_access_key_id=DO_SPACES_KEY,
+    aws_secret_access_key=DO_SPACES_SECRET,
+)
 
 # 📁 Wczytujemy zapisane modele ML
 @st.cache_resource
@@ -26,16 +54,6 @@ models = load_models()
 # 🎨 Interfejs Streamlit
 st.title("⏳ Szacowanie czasu ukończenia półmaratonu")
 st.markdown("Wprowadź swoje dane, a model przewidzi, w jakim czasie ukończysz półmaraton i jakie miejsce zajmiesz!")
-
-# 📌 Wczytaj klucze API i konfigurację Langfuse
-load_dotenv()
-langfuse_client = Langfuse(
-    public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
-    secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
-    host=os.getenv("LANGFUSE_HOST"),
-)
-
-llm_client = LangfuseOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # 📌 Formularz do wprowadzania danych
 plec = st.selectbox("Płeć:", ["Mężczyzna", "Kobieta"])
@@ -89,6 +107,17 @@ def predict_missing_tempo(plec, wiek):
         st.warning(f"⚠️ Błąd LLM: {e}")
         return 5.5
 
+# 📌 Funkcja wysyłania pliku do Spaces
+def upload_to_spaces(file_path, object_name):
+    """Wysyła plik do DigitalOcean Spaces."""
+    try:
+        s3_client.upload_file(file_path, DO_SPACES_BUCKET, object_name)
+        url = f"https://{DO_SPACES_BUCKET}.{DO_SPACES_REGION}.digitaloceanspaces.com/{object_name}"
+        return url
+    except Exception as e:
+        print(f"⚠️ Błąd przesyłania na Spaces: {e}")
+        return None
+
 # 🚀 Predykcja
 if st.button("🔮 Oblicz przewidywany czas"):
 
@@ -134,13 +163,8 @@ if st.button("🔮 Oblicz przewidywany czas"):
 
     st.info(f"🏆 Szacowane miejsce: **{miejsce}/{liczba_uczestnikow}**")
 
-    # 📊 Langfuse – logowanie predykcji
-    try:
-        langfuse_client.score(
-            trace_id=st.session_state.get("trace_id", None),
-            name="halfmarathon_prediction",
-            value=1.0,
-            comment="Predykcja zakończona powodzeniem",
-        )
-    except Exception as e:
-        st.warning(f"⚠️ Błąd Langfuse przy zapisie: {e}")
+    # 📤 Wysyłanie wyników na Spaces
+    input_data.to_csv("wyniki.csv", index=False)
+    upload_url = upload_to_spaces("wyniki.csv", "wyniki_polmaraton.csv")
+    if upload_url:
+        st.success(f"📤 Wyniki zostały zapisane w Spaces: [Pobierz wyniki]({upload_url})")
