@@ -1,7 +1,2 @@
-logs.log
-<<<<<<< HEAD
 .env
-
-=======
-.env.env
->>>>>>> ef70e42 (ok)
+logs.log
