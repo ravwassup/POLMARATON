@@ -12,6 +12,12 @@ from langfuse import Langfuse
 from langfuse.decorators import observe
 from langfuse.openai import OpenAI as LangfuseOpenAI
 
+# 📌 Wczytaj klucz OpenAI API
+openai_api_key = st.text_input("🔐 Wpisz swój klucz OpenAI API:", type="password")
+if not openai_api_key:
+    st.warning("🔑 Wpisz klucz OpenAI API, aby kontynuować.")
+    st.stop() # Zatrzymaj skrypt, jeśli brakuje klucza
+
 # 📌 Wczytaj zmienne środowiskowe
 load_dotenv()
 
@@ -154,7 +160,7 @@ if st.button("🔮 Oblicz przewidywany czas"):
     st.success(f"🏁 Przewidywany czas ukończenia półmaratonu: **{format_time(przewidywany_czas)}**")
 
     # 🏆 Miejsce
-    liczba_uczestnikow = 5000
+    liczba_uczestnikow = 10000
     czas_najlepszy = 3899  
     czas_najgorszy = 12754  
 
