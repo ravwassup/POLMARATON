@@ -12,14 +12,13 @@ from langfuse import Langfuse
 from langfuse.decorators import observe
 from langfuse.openai import OpenAI as LangfuseOpenAI
 
-# 📌 Wczytaj klucz OpenAI API
-openai_api_key = st.text_input("🔐 Wpisz swój klucz OpenAI API:", type="password")
-if not openai_api_key:
-    st.warning("🔑 Wpisz klucz OpenAI API, aby kontynuować.")
-    st.stop() # Zatrzymaj skrypt, jeśli brakuje klucza
+openai_key = st.text_input("🔐 Wpisz swój OpenAI API Key:", type="password")
+if not openai_key:
+    st.warning("🔑 Wprowadź klucz OpenAI, aby kontynuować.")
+    st.stop()
 
-# 📌 Wczytaj zmienne środowiskowe
-load_dotenv()
+llm_client = LangfuseOpenAI(api_key=openai_key)
+
 
 # 📌 Konfiguracja Langfuse
 langfuse_client = Langfuse(
