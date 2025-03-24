@@ -27,7 +27,7 @@ langfuse_client = Langfuse(
     host=os.getenv("LANGFUSE_HOST"),
 )
 
-llm_client = LangfuseOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+llm_client = LangfuseOpenAI("OPENAI_API_KEY"))
 
 # 📌 Konfiguracja DigitalOcean Spaces
 DO_SPACES_KEY = os.getenv("DO_SPACES_KEY")
